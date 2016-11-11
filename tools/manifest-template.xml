@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ClusterManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                 xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="AWS-Cluster" Version="1.0">
+    <NodeTypes>
+        <NodeType Name="basenode">
+            <Endpoints>
+                <ClientConnectionEndpoint Port="19000" />
+                <LeaseDriverEndpoint Port="1026" />
+                <ClusterConnectionEndpoint Port="1025" />
+                <HttpGatewayEndpoint Port="19080" Protocol="http" />
+                <ServiceConnectionEndpoint Port="1027" />
+                <ClusterManagerReplicatorEndpoint Port="19003" />
+                <RepairManagerReplicatorEndpoint Port="19005" />
+                <NamingReplicatorEndpoint Port="19002" />
+                <FailoverManagerReplicatorEndpoint Port="19001" />
+                <ImageStoreServiceReplicatorEndpoint Port="19004" />
+                <UpgradeServiceReplicatorEndpoint Port="19006" />
+                <ApplicationEndpoints StartPort="20000" EndPort="30000" />
+                <EphemeralEndpoints StartPort="49152" EndPort="65534" />
+            </Endpoints>
+            <PlacementProperties>
+                <Property Name="NodeTypeName" Value="basenode" />
+            </PlacementProperties>
+        </NodeType>
+    </NodeTypes>
+    <Infrastructure>
+        <WindowsServer IsScaleMin="true">
+            <NodeList>
+{% for ip in groups['security_group_service_fabric_demo'] %}
+                    <Node NodeName="Node_{{ hostvars[ip]['ec2_private_ip_address'] }}" IPAddressOrFQDN="{{ hostvars[ip]['ec2_private_ip_address'] }}"
+                          IsSeedNode="true" NodeTypeRef="basenode" FaultDomain="fd:/{{ loop.index0 }}" UpgradeDomain="{{ loop.index0 }}"/>
+{% endfor %}
+            </NodeList>
+        </WindowsServer>
+    </Infrastructure>
+    <FabricSettings>
+        <Section Name="Security">
+            <Parameter Name="ClusterCredentialType" Value="None"/>
+            <Parameter Name="ServerAuthCredentialType" Value="None"/>
+        </Section>
+        <Section Name="FailoverManager">
+            <Parameter Name="ExpectedClusterSize" Value="5"/>
+            <Parameter Name="TargetReplicaSetSize" Value="3"/>
+            <Parameter Name="MinReplicaSetSize" Value="1"/>
+            <Parameter Name="ReconfigurationTimeLimit" Value="20"/>
+            <Parameter Name="BuildReplicaTimeLimit" Value="20"/>
+            <Parameter Name="CreateInstanceTimeLimit" Value="20"/>
+            <Parameter Name="PlacementTimeLimit" Value="20"/>
+        </Section>
+        <Section Name="ReconfigurationAgent">
+            <Parameter Name="ServiceApiHealthDuration" Value="20"/>
+            <Parameter Name="ServiceReconfigurationApiHealthDuration" Value="20"/>
+            <Parameter Name="LocalHealthReportingTimerInterval" Value="5"/>
+            <Parameter Name="IsDeactivationInfoEnabled" Value="true"/>
+            <Parameter Name="RAUpgradeProgressCheckInterval" Value="3"/>
+        </Section>
+        <Section Name="ClusterManager">
+            <Parameter Name="TargetReplicaSetSize" Value="3"/>
+            <Parameter Name="MinReplicaSetSize" Value="1"/>
+            <Parameter Name="UpgradeStatusPollInterval" Value="5"/>
+            <Parameter Name="UpgradeHealthCheckInterval" Value="5"/>
+            <Parameter Name="FabricUpgradeHealthCheckInterval" Value="5"/>
+        </Section>
+        <Section Name="NamingService">
+            <Parameter Name="TargetReplicaSetSize" Value="3"/>
+            <Parameter Name="MinReplicaSetSize" Value="1"/>
+        </Section>
+        <Section Name="ImageStoreService">
+            <Parameter Name="TargetReplicaSetSize" Value="3"/>
+            <Parameter Name="MinReplicaSetSize" Value="1"/>
+        </Section>
+        <Section Name="FileStoreService">
+            <Parameter Name="PrimaryAccountType" Value="LocalUser"/>
+            <Parameter Name="PrimaryAccountNTLMPasswordSecret" Value="Foo"/>
+            <Parameter Name="SecondaryAccountType" Value="LocalUser"/>
+            <Parameter Name="SecondaryAccountNTLMPasswordSecret" Value="Bar"/>
+        </Section>
+        <Section Name="Management">
+            <Parameter Name="ImageStoreConnectionString" Value="fabric:ImageStore"/>
+            <Parameter Name="ImageCachingEnabled" Value="false"/>
+            <Parameter Name="EnableDeploymentAtDataRoot" Value="true"/>
+        </Section>
+        <Section Name="Hosting">
+            <Parameter Name="EndpointProviderEnabled" Value="true"/>
+            <Parameter Name="RunAsPolicyEnabled" Value="true"/>
+            <Parameter Name="DeactivationScanInterval" Value="60"/>
+            <Parameter Name="DeactivationGraceInterval" Value="10"/>
+            <Parameter Name="ServiceTypeRegistrationTimeout" Value="20"/>
+            <Parameter Name="CacheCleanupScanInterval" Value="300"/>
+        </Section>
+        <Section Name="HttpGateway">
+            <Parameter Name="IsEnabled" Value="true"/>
+        </Section>
+        <Section Name="PlacementAndLoadBalancing">
+            <Parameter Name="MinLoadBalancingInterval" Value="300"/>
+        </Section>
+        <Section Name="Federation">
+            <Parameter Name="NodeIdGeneratorVersion" Value="V4"/>
+        </Section>
+        <Section Name="Trace/Etw">
+            <Parameter Name="Level" Value="4"/>
+        </Section>
+        <Section Name="RunAs_DCA">
+            <Parameter Name="RunAsAccountType" Value="LocalSystem"/>
+        </Section>
+    </FabricSettings>
+</ClusterManifest>
