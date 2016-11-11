@@ -19,13 +19,13 @@ group.
 The recipe picks sane defaults, but you may want to tweak them to fit 
 your specific needs.
 
+- KeyName (**required**)
+    - Name of an existing EC2 KeyPair to enable SSH access to the Service Fabric Cluster
 - DiskType (default: ssd enabled ebs)
     - Type of disk that will be backing the cluster instances
     - AllowedValues:
         - ephemeral
         - ebs
-- KeyName (**required**)
-    - Name of an existing EC2 KeyPair to enable SSH access to the Service Fabric Cluster
 - SFClusterSize (default: 5)
     - Number of nodes in the Service Fabric cluster
 - SFInstanceType (default: m4.large)
