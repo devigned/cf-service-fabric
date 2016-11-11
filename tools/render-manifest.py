@@ -5,14 +5,15 @@ import sys
 import jinja2
 
 
-if len(sys.argv) < 3:
-    print "usage: python render-manifest.py stack-id file-source"
+if len(sys.argv) < 4:
+    print "usage: python render-manifest.py stack-id us-west-1 ./file"
     exit(1)
 stack_id = sys.argv[1]
-file_source = sys.argv[2]
+region = sys.argv[2]
+file_source = sys.argv[3]
 
 
-client = boto3.client('ec2')
+client = boto3.client('ec2', region_name=region)
 
 reservations = client.describe_instances(
     Filters=[{'Name': 'tag:aws:cloudformation:stack-id', 'Values': [stack_id]}])['Reservations']
