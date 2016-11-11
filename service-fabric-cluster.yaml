@@ -238,7 +238,7 @@ Resources:
             render-restart-sf:
               command: !Sub |
                 # render the template into the cluster config location
-                python tools/update-sf-cluster.py ${AWS::StackId} /opt/microsoft/cfn/tools/manifest-template.xml > /tmp/sf-manifest.xml
+                python /opt/microsoft/cfn/tools/update-sf-cluster.py ${AWS::StackId} /opt/microsoft/cfn/tools/manifest-template.xml > /tmp/sf-manifest.xml
                 mv /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml.bak
                 cp /tmp/sf-manifest.xml /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml
                 echo "###################   Updating with the following manifest   ###################"
