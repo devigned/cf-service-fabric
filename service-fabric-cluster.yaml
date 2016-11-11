@@ -216,7 +216,7 @@ Resources:
                 /opt/microsoft/sdk/servicefabric/java/sdkjavasetup.sh
                 /opt/microsoft/sdk/servicefabric/csharp/sdkcsharpsetup.sh
 
-                pip install boto
+                pip install boto jinja2
           packages:
             apt:
               docker.io: []
@@ -232,14 +232,19 @@ Resources:
           commands:
             send-signal:
               command: !Sub |
-
                 cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource SFServerGroup
         update-sf-config:
           commands:
             render-restart-sf:
               command: !Sub |
                 # render the template into the cluster config location
-                echo "will render and restart sf"
+                python tools/update-sf-cluster.py ${AWS::StackId} /opt/microsoft/cfn/tools/manifest-template.xml > /tmp/sf-manifest.xml
+                mv /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml.bak
+                cp /tmp/sf-manifest.xml /opt/microsoft/sdk/servicefabric/common/clustersetup/nonsecure/servicefabric-scalemin.xml
+                echo "###################   Updating with the following manifest   ###################"
+                cat /tmp/sf-manifest.xml
+                echo "###################   Running devclustersetup.sh   ###################"
+                /opt/microsoft/sdk/servicefabric/common/clustersetup/devclustersetup.sh
     Properties:
       IamInstanceProfile:
         Ref: RootInstanceProfile
