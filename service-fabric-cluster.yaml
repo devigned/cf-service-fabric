@@ -299,27 +299,26 @@ Resources:
               - ec2:DescribeRegions
               - ec2:DescribeTags
             Effect: Allow
-            Resource: *
-        PolicyName: root
-        Roles:
-          -
-            Ref: RootRole
+            Resource: '*'
+      PolicyName: root
+      Roles:
+        -
+          Ref: RootRole
   RootInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Path: /
+      Path: '/'
       Roles:
         - Ref: RootRole
   RootRole:
-    Type: AWS::IAM:ROLE
+    Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
         Statement:
-          -
-            Action:
+          - Action:
               - sts:AssumeRole
             Effect: Allow
             Principal:
               Service:
-                - ec2
-        Path: /
+                - ec2.amazonaws.com
+      Path: '/'
