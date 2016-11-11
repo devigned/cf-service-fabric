@@ -26,8 +26,8 @@
     <Infrastructure>
         <WindowsServer IsScaleMin="true">
             <NodeList>
-{% for ip in groups['security_group_service_fabric_demo'] %}
-                    <Node NodeName="Node_{{ hostvars[ip]['ec2_private_ip_address'] }}" IPAddressOrFQDN="{{ hostvars[ip]['ec2_private_ip_address'] }}"
+{% for ip in ips %}
+                    <Node NodeName="Node_{{ ip }}" IPAddressOrFQDN="{{ ip }}"
                           IsSeedNode="true" NodeTypeRef="basenode" FaultDomain="fd:/{{ loop.index0 }}" UpgradeDomain="{{ loop.index0 }}"/>
 {% endfor %}
             </NodeList>

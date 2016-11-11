@@ -66,8 +66,8 @@ Mappings:
 Parameters:
   DiskType:
     AllowedValues:
-    - ephemeral
-    - ebs
+      - ephemeral
+      - ebs
     Default: ebs
     Description: Type of Disk to use ( ephemeral/ebs )
     Type: String
@@ -78,16 +78,16 @@ Parameters:
   SFClusterSize:
     Description: Number of nodes in the Service Fabric cluster
     Type: String
-    Default: '1'
+    Default: '3'
   SFInstanceType:
     AllowedValues:
-    - m4.large
-    - m4.xlarge
-    - m4.2xlarge
-    - m4.4xlarge
-    - c4.large
-    - c4.xlarge
-    - c4.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
     ConstraintDescription: 'must be valid instance type. '
     Default: m4.large
     Description: Type of EC2 instance for Service Fabric
@@ -128,10 +128,10 @@ Resources:
     Properties:
       GroupDescription: Enable SSH access via port 22
       SecurityGroupIngress:
-      - CidrIp: 0.0.0.0/0
-        FromPort: '22'
-        IpProtocol: tcp
-        ToPort: '22'
+        - CidrIp: 0.0.0.0/0
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration  
     Metadata:
@@ -140,7 +140,7 @@ Resources:
         configSets:
           sf-setup:
             - init-config
-            - install-config
+            - install
             - update-sf-config
             - signal-complete
           update:
@@ -168,119 +168,10 @@ Resources:
                 bash -c 'debconf-set-selections <<< "servicefabricsdkcommon servicefabricsdkcommon/accepted-all-eula select true"'
                 apt update
 
+                mv /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+                cp /opt/microsoft/cfn/tools/sshd_config /etc/ssh/sshd_config
                 service ssh restart
-          files:
-            /etc/ssh/sshd_config:
-              content: |
-                # Package generated configuration file
-                # See the sshd_config(5) manpage for details
-
-                # What ports, IPs and protocols we listen for
-                Port 22
-                # Use these options to restrict which interfaces/protocols sshd will bind to
-                #ListenAddress ::
-                #ListenAddress 0.0.0.0
-                Protocol 2
-                # HostKeys for protocol version 2
-                HostKey /etc/ssh/ssh_host_rsa_key
-                HostKey /etc/ssh/ssh_host_dsa_key
-                HostKey /etc/ssh/ssh_host_ecdsa_key
-                HostKey /etc/ssh/ssh_host_ed25519_key
-                #Privilege Separation is turned on for security
-                UsePrivilegeSeparation yes
-
-                # Lifetime and size of ephemeral version 1 server key
-                KeyRegenerationInterval 3600
-                ServerKeyBits 1024
-
-                # Logging
-                SyslogFacility AUTH
-                LogLevel INFO
-
-                # Authentication:
-                LoginGraceTime 120
-                PermitRootLogin no
-                StrictModes yes
-
-                RSAAuthentication yes
-                PubkeyAuthentication yes
-                #AuthorizedKeysFile	%h/.ssh/authorized_keys
-
-                # Don't read the user's ~/.rhosts and ~/.shosts files
-                IgnoreRhosts yes
-                # For this to work you will also need host keys in /etc/ssh_known_hosts
-                RhostsRSAAuthentication no
-                # similar for protocol version 2
-                HostbasedAuthentication no
-                # Uncomment if you don't trust ~/.ssh/known_hosts for RhostsRSAAuthentication
-                #IgnoreUserKnownHosts yes
-
-                # To enable empty passwords, change to yes (NOT RECOMMENDED)
-                PermitEmptyPasswords no
-
-                # Change to yes to enable challenge-response passwords (beware issues with
-                # some PAM modules and threads)
-                ChallengeResponseAuthentication no
-
-                # Change to no to disable tunnelled clear text passwords
-                PasswordAuthentication yes
-
-                # Kerberos options
-                #KerberosAuthentication no
-                #KerberosGetAFSToken no
-                #KerberosOrLocalPasswd yes
-                #KerberosTicketCleanup yes
-
-                # GSSAPI options
-                #GSSAPIAuthentication no
-                #GSSAPICleanupCredentials yes
-
-                X11Forwarding yes
-                X11DisplayOffset 10
-                PrintMotd no
-                PrintLastLog yes
-                TCPKeepAlive yes
-                #UseLogin no
-
-                #MaxStartups 10:30:60
-                # Banner /etc/azsec/banner.txt
-                # Allow client to pass locale environment variables
-                AcceptEnv LANG LC_*
-
-                Subsystem sftp /usr/lib/openssh/sftp-server
-
-                # Set this to 'yes' to enable PAM authentication, account processing,
-                # and session processing. If this is enabled, PAM authentication will
-                # be allowed through the ChallengeResponseAuthentication and
-                # PasswordAuthentication.  Depending on your PAM configuration,
-                # PAM authentication via ChallengeResponseAuthentication may bypass
-                # the setting of "PermitRootLogin without-password".
-                # If you just want the PAM account and session checks to run without
-                # PAM authentication, then enable this but set PasswordAuthentication
-                # and ChallengeResponseAuthentication to 'no'.
-                UsePAM yes
-
-                # CLOUD_IMG: This file was created/modified by the Cloud Image build process
-                ClientAliveInterval 120
-        install-config:
-          commands:
-            setup-sdks:
-              command: !Sub |
-                # render the template into the cluster config location
-                /opt/microsoft/sdk/servicefabric/common/sdkcommonsetup.sh
-                /opt/microsoft/sdk/servicefabric/java/sdkjavasetup.sh
-                /opt/microsoft/sdk/servicefabric/csharp/sdkcsharpsetup.sh
                 systemctl enable cfn-hup.service
-          packages:
-            apt:
-              docker.io: []
-              python-pip: []
-              nodejs: []
-              openssh-server: []
-              openssh-client: []
-              servicefabricsdkcommon: []
-              servicefabricsdkjava: []
-              servicefabricsdkcsharp: []
           files:
             /etc/cfn/hooks.d/cfn-auto-reloader.conf:
               content: !Sub |
@@ -316,10 +207,32 @@ Resources:
               mode: "00400"
               owner: "root"
               group: "root"
+        install:
+          commands:
+            setup-sdks:
+              command: !Sub |
+                # render the template into the cluster config location
+                /opt/microsoft/sdk/servicefabric/common/sdkcommonsetup.sh
+                /opt/microsoft/sdk/servicefabric/java/sdkjavasetup.sh
+                /opt/microsoft/sdk/servicefabric/csharp/sdkcsharpsetup.sh
+
+                pip install boto
+          packages:
+            apt:
+              docker.io: []
+              python-pip: []
+              nodejs: []
+              openssh-server: []
+              openssh-client: []
+              servicefabricsdkcommon: []
+              servicefabricsdkjava: []
+              servicefabricsdkcsharp: []
+              git: []
         signal-complete:
           commands:
             send-signal:
               command: !Sub |
+
                 cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource SFServerGroup
         update-sf-config:
           commands:
@@ -327,132 +240,23 @@ Resources:
               command: !Sub |
                 # render the template into the cluster config location
                 echo "will render and restart sf"
-          files:
-            /tmp/manifest-template.xml:
-              content: |
-                <?xml version="1.0" encoding="UTF-8"?>
-                <ClusterManifest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-                                xmlns="http://schemas.microsoft.com/2011/01/fabric" Name="AWS-Cluster" Version="1.0">
-                    <NodeTypes>
-                        <NodeType Name="basenode">
-                            <Endpoints>
-                                <ClientConnectionEndpoint Port="19000" />
-                                <LeaseDriverEndpoint Port="1026" />
-                                <ClusterConnectionEndpoint Port="1025" />
-                                <HttpGatewayEndpoint Port="19080" Protocol="http" />
-                                <ServiceConnectionEndpoint Port="1027" />
-                                <ClusterManagerReplicatorEndpoint Port="19003" />
-                                <RepairManagerReplicatorEndpoint Port="19005" />
-                                <NamingReplicatorEndpoint Port="19002" />
-                                <FailoverManagerReplicatorEndpoint Port="19001" />
-                                <ImageStoreServiceReplicatorEndpoint Port="19004" />
-                                <UpgradeServiceReplicatorEndpoint Port="19006" />
-                                <ApplicationEndpoints StartPort="20000" EndPort="30000" />
-                                <EphemeralEndpoints StartPort="49152" EndPort="65534" />
-                            </Endpoints>
-                            <PlacementProperties>
-                                <Property Name="NodeTypeName" Value="basenode" />
-                            </PlacementProperties>
-                        </NodeType>
-                    </NodeTypes>
-                    <Infrastructure>
-                        <WindowsServer IsScaleMin="true">
-                            <NodeList>
-                {% for ip in ips %}
-                                    <Node NodeName="Node_{{ ip }}" IPAddressOrFQDN="{{ ip }}"
-                                          IsSeedNode="true" NodeTypeRef="basenode" FaultDomain="fd:/{{ loop.index0 }}" UpgradeDomain="{{ loop.index0 }}"/>
-                {% endfor %}
-                            </NodeList>
-                        </WindowsServer>
-                    </Infrastructure>
-                    <FabricSettings>
-                        <Section Name="Security">
-                            <Parameter Name="ClusterCredentialType" Value="None"/>
-                            <Parameter Name="ServerAuthCredentialType" Value="None"/>
-                        </Section>
-                        <Section Name="FailoverManager">
-                            <Parameter Name="ExpectedClusterSize" Value="5"/>
-                            <Parameter Name="TargetReplicaSetSize" Value="3"/>
-                            <Parameter Name="MinReplicaSetSize" Value="1"/>
-                            <Parameter Name="ReconfigurationTimeLimit" Value="20"/>
-                            <Parameter Name="BuildReplicaTimeLimit" Value="20"/>
-                            <Parameter Name="CreateInstanceTimeLimit" Value="20"/>
-                            <Parameter Name="PlacementTimeLimit" Value="20"/>
-                        </Section>
-                        <Section Name="ReconfigurationAgent">
-                            <Parameter Name="ServiceApiHealthDuration" Value="20"/>
-                            <Parameter Name="ServiceReconfigurationApiHealthDuration" Value="20"/>
-                            <Parameter Name="LocalHealthReportingTimerInterval" Value="5"/>
-                            <Parameter Name="IsDeactivationInfoEnabled" Value="true"/>
-                            <Parameter Name="RAUpgradeProgressCheckInterval" Value="3"/>
-                        </Section>
-                        <Section Name="ClusterManager">
-                            <Parameter Name="TargetReplicaSetSize" Value="3"/>
-                            <Parameter Name="MinReplicaSetSize" Value="1"/>
-                            <Parameter Name="UpgradeStatusPollInterval" Value="5"/>
-                            <Parameter Name="UpgradeHealthCheckInterval" Value="5"/>
-                            <Parameter Name="FabricUpgradeHealthCheckInterval" Value="5"/>
-                        </Section>
-                        <Section Name="NamingService">
-                            <Parameter Name="TargetReplicaSetSize" Value="3"/>
-                            <Parameter Name="MinReplicaSetSize" Value="1"/>
-                        </Section>
-                        <Section Name="ImageStoreService">
-                            <Parameter Name="TargetReplicaSetSize" Value="3"/>
-                            <Parameter Name="MinReplicaSetSize" Value="1"/>
-                        </Section>
-                        <Section Name="FileStoreService">
-                            <Parameter Name="PrimaryAccountType" Value="LocalUser"/>
-                            <Parameter Name="PrimaryAccountNTLMPasswordSecret" Value="Foo"/>
-                            <Parameter Name="SecondaryAccountType" Value="LocalUser"/>
-                            <Parameter Name="SecondaryAccountNTLMPasswordSecret" Value="Bar"/>
-                        </Section>
-                        <Section Name="Management">
-                            <Parameter Name="ImageStoreConnectionString" Value="fabric:ImageStore"/>
-                            <Parameter Name="ImageCachingEnabled" Value="false"/>
-                            <Parameter Name="EnableDeploymentAtDataRoot" Value="true"/>
-                        </Section>
-                        <Section Name="Hosting">
-                            <Parameter Name="EndpointProviderEnabled" Value="true"/>
-                            <Parameter Name="RunAsPolicyEnabled" Value="true"/>
-                            <Parameter Name="DeactivationScanInterval" Value="60"/>
-                            <Parameter Name="DeactivationGraceInterval" Value="10"/>
-                            <Parameter Name="ServiceTypeRegistrationTimeout" Value="20"/>
-                            <Parameter Name="CacheCleanupScanInterval" Value="300"/>
-                        </Section>
-                        <Section Name="HttpGateway">
-                            <Parameter Name="IsEnabled" Value="true"/>
-                        </Section>
-                        <Section Name="PlacementAndLoadBalancing">
-                            <Parameter Name="MinLoadBalancingInterval" Value="300"/>
-                        </Section>
-                        <Section Name="Federation">
-                            <Parameter Name="NodeIdGeneratorVersion" Value="V4"/>
-                        </Section>
-                        <Section Name="Trace/Etw">
-                            <Parameter Name="Level" Value="4"/>
-                        </Section>
-                        <Section Name="RunAs_DCA">
-                            <Parameter Name="RunAsAccountType" Value="LocalSystem"/>
-                        </Section>
-                    </FabricSettings>
-                </ClusterManifest>
-
     Properties:
+      IamInstanceProfile:
+        Ref: RootInstanceProfile
       ImageId:
         Fn::FindInMap:
-        - Ref: DiskType
-        - Ref: AWS::Region
-        - Fn::FindInMap:
-          - AWSInstanceType2Arch
-          - Ref: SFInstanceType
-          - Arch
+          - Ref: DiskType
+          - Ref: AWS::Region
+          - Fn::FindInMap:
+            - AWSInstanceType2Arch
+            - Ref: SFInstanceType
+            - Arch
       InstanceType:
         Ref: SFInstanceType
       KeyName:
         Ref: KeyName
       SecurityGroups:
-      - Ref: InstanceSecurityGroup
+        - Ref: InstanceSecurityGroup
       UserData:
         "Fn::Base64":
           !Sub |
@@ -460,6 +264,7 @@ Resources:
             apt update
             apt -y install python-setuptools
             easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+            git clone https://github.com/devigned/cf-service-fabric.git /opt/microsoft/cfn
             cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfig
   SFServerGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
@@ -476,3 +281,40 @@ Resources:
         Ref: SFClusterSize
       MinSize:
         Ref: SFClusterSize
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          -
+            Action:
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeInstances
+              - ec2:DescribeRegions
+              - ec2:DescribeTags
+            Effect: Allow
+            Resource: *
+        PolicyName: root
+        Roles:
+          -
+            Ref: RootRole
+  RootInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - Ref: RootRole
+  RootRole:
+    Type: AWS::IAM:ROLE
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          -
+            Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2
+        Path: /
