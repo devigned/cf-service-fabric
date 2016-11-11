@@ -216,7 +216,7 @@ Resources:
                 /opt/microsoft/sdk/servicefabric/java/sdkjavasetup.sh
                 /opt/microsoft/sdk/servicefabric/csharp/sdkcsharpsetup.sh
 
-                pip install boto jinja2
+                pip install boto3 jinja2
           packages:
             apt:
               docker.io: []
