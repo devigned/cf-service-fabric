@@ -132,6 +132,17 @@ Resources:
           FromPort: '22'
           IpProtocol: tcp
           ToPort: '22'
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupOwnerId:
+            Fn::GetAtt:
+              - ElasticLoadBalancer
+              - SourceSecurityGroup.OwnerAlias
+          SourceSecurityGroupName:
+            Fn::GetAtt:
+              - ElasticLoadBalancer
+              - SourceSecurityGroup.GroupName
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration  
     Metadata:
@@ -155,9 +166,9 @@ Resources:
                 sh -c 'echo "deb [arch=amd64] http://apt-mo.trafficmanager.net/repos/servicefabric/ trusty main" > /etc/apt/sources.list.d/servicefabric.list'
                 apt-key adv --keyserver apt-mo.trafficmanager.net --recv-keys 417A0893
 
-                sh -c 'echo "deb https://deb.nodesource.com/node_4.x trusty main" > /etc/apt/sources.list.d/node.list'
-                sh -c 'echo "deb-src https://deb.nodesource.com/node_4.x trusty main" > /etc/apt/sources.list.d/node-src.list'
-                apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 68576280
+                sh -c 'echo "deb https://deb.nodesource.com/node_6.x xenial main" > /etc/apt/sources.list.d/nodesource.list'
+                sh -c 'echo "deb-src https://deb.nodesource.com/node_6.x xenial main" >> /etc/apt/sources.list.d/nodesource.list'
+                curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
 
                 bash -c 'debconf-set-selections <<< "servicefabric servicefabric/presenteula select false"'
                 bash -c 'debconf-set-selections <<< "servicefabric servicefabric/accepted-eula-v1 select true"'
@@ -216,6 +227,8 @@ Resources:
                 /opt/microsoft/sdk/servicefabric/java/sdkjavasetup.sh
                 /opt/microsoft/sdk/servicefabric/csharp/sdkcsharpsetup.sh
 
+                npm install -g azure-cli
+
                 pip install boto3 jinja2
           packages:
             apt:
@@ -271,19 +284,42 @@ Resources:
             easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             git clone https://github.com/devigned/cf-service-fabric.git /opt/microsoft/cfn
             cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfig
+  ElasticLoadBalancer:
+    Type: AWS::ElasticLoadBalancing::LoadBalancer
+    Properties:
+      AvailabilityZones:
+        Fn::GetAZs: ''
+      CrossZone: true
+      Listeners:
+        - LoadBalancerPort: 80
+          InstancePort: 80
+          Protocol: 'HTTP'
+      HealthCheck:
+        Target: "HTTP:80/"
+        HealthyThreashold: 3
+        UnhealthyThreshold: 5
+        Interval: 30
+        Timeout: 5
   SFServerGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     CreationPolicy:
       ResourceSignal:
         Count: 1
-        Timeout: "PT10M"
+        Timeout: "PT15M"
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 2
+        MinInstancesInService: 3
+        WaitOnResourceSignals: true
+        PauseTime: "PT15M"
     Properties:
       AvailabilityZones:
         Fn::GetAZs: ''
+      LoadBalancerNames:
+        - Ref: ElasticLoadBalancer
       LaunchConfigurationName:
         Ref: LaunchConfig
-      MaxSize:
-        Ref: SFClusterSize
+      MaxSize: 20
       MinSize:
         Ref: SFClusterSize
   RolePolicies:
