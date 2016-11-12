@@ -296,7 +296,7 @@ Resources:
           Protocol: 'HTTP'
       HealthCheck:
         Target: "HTTP:80/"
-        HealthyThreashold: 3
+        HealthyThreshold: 3
         UnhealthyThreshold: 5
         Interval: 30
         Timeout: 5
