@@ -74,10 +74,10 @@ Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the Service
       Fabric Cluster
-    Type: String
+    Type: AWS::EC2::KeyPair::KeyName
   SFClusterSize:
     Description: Number of nodes in the Service Fabric cluster
-    Type: String
+    Type: Number
     Default: '5'
   SFInstanceType:
     AllowedValues:
@@ -92,6 +92,17 @@ Parameters:
     Default: m4.large
     Description: Type of EC2 instance for Service Fabric
     Type: String
+  SFAvailabilityZones:
+    Description: Availability Zones for the Service Fabric Cluster
+    ConstraintDescription: 'valid array of Availability Zones for the stack region'
+    Type: CommaDelimitedList
+    Default: ''
+Conditions:
+  "HasAZs":
+    !Not
+      - !Equals
+        - !Select ['0', !Ref SFAvailabilityZones]
+        - ''
 Resources:
   ClusterCommunication1:
     Type: AWS::EC2::SecurityGroupIngress  
@@ -153,7 +164,6 @@ Resources:
             - init-config
             - install
             - update-sf-config
-            - signal-complete
           update:
             - update-sf-config
           default:
@@ -241,11 +251,6 @@ Resources:
               servicefabricsdkjava: []
               servicefabricsdkcsharp: []
               git: []
-        signal-complete:
-          commands:
-            send-signal:
-              command: !Sub |
-                cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource SFServerGroup
         update-sf-config:
           commands:
             render-restart-sf:
@@ -284,11 +289,11 @@ Resources:
             easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
             git clone https://github.com/devigned/cf-service-fabric.git /opt/microsoft/cfn
             cfn-init -v --region ${AWS::Region} --stack ${AWS::StackName} --resource LaunchConfig
+            cfn-signal -e $? --region ${AWS::Region} --stack ${AWS::StackName} --resource SFServerGroup
   ElasticLoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
     Properties:
-      AvailabilityZones:
-        Fn::GetAZs: ''
+      AvailabilityZones: !If [HasAZs, !Ref SFAvailabilityZones, !GetAZs '']
       CrossZone: true
       Listeners:
         - LoadBalancerPort: 80
@@ -308,13 +313,12 @@ Resources:
         Timeout: "PT15M"
     UpdatePolicy:
       AutoScalingRollingUpdate:
-        MaxBatchSize: 2
-        MinInstancesInService: 3
-        WaitOnResourceSignals: true
+        MaxBatchSize: '2'
+        MinInstancesInService: '3'
+        WaitOnResourceSignals: "true"
         PauseTime: "PT15M"
     Properties:
-      AvailabilityZones:
-        Fn::GetAZs: ''
+      AvailabilityZones: !If [HasAZs, !Ref SFAvailabilityZones, !GetAZs '']
       LoadBalancerNames:
         - Ref: ElasticLoadBalancer
       LaunchConfigurationName:
